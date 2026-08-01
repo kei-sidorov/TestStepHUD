@@ -3,44 +3,70 @@ import XCTest
 import TestStepHUDProtocol
 
 public final class TestStepHUDSession: @unchecked Sendable {
-    private let transport: TestTransport
+    private let transport: TestTransport?
     private let application: XCUIApplication
     private let defaultTimeout: TimeInterval
     private let tapHighlightDelay: TimeInterval
+
+    /// The setup error when HUD startup was unavailable. A session with a
+    /// startup error safely ignores HUD commands while the UI test continues.
+    public let startupError: TestStepHUDSessionError?
+
+    /// Whether the HUD connected and installed interaction interception.
+    public var isAvailable: Bool {
+        startupError == nil
+    }
 
     init(
         transport: TestTransport,
         application: XCUIApplication,
         defaultTimeout: TimeInterval,
-        tapHighlightDelay: TimeInterval
+        tapHighlightDelay: TimeInterval,
+        startupError: TestStepHUDSessionError?
     ) {
         self.transport = transport
         self.application = application
         self.defaultTimeout = defaultTimeout
         self.tapHighlightDelay = min(max(tapHighlightDelay, 0), 5)
+        self.startupError = startupError
+    }
+
+    init(
+        application: XCUIApplication,
+        defaultTimeout: TimeInterval,
+        tapHighlightDelay: TimeInterval,
+        startupError: TestStepHUDSessionError
+    ) {
+        transport = nil
+        self.application = application
+        self.defaultTimeout = defaultTimeout
+        self.tapHighlightDelay = min(max(tapHighlightDelay, 0), 5)
+        self.startupError = startupError
     }
 
     deinit {
         XCUIElementTapInterceptor.deactivate(session: self)
-        transport.cancel()
+        transport?.cancel()
     }
 
     @MainActor
     public func show(
         _ text: String,
         timeout: TimeInterval? = nil
-    ) throws {
+    ) {
+        guard let transport else { return }
         let id = UUID()
-        try transport.send(
+        try? transport.send(
             .show(id: id, text: text),
             timeout: timeout ?? defaultTimeout
         )
     }
 
     @MainActor
-    public func hide(timeout: TimeInterval? = nil) throws {
+    public func hide(timeout: TimeInterval? = nil) {
+        guard let transport else { return }
         let id = UUID()
-        try transport.send(
+        try? transport.send(
             .hide(id: id),
             timeout: timeout ?? defaultTimeout
         )
@@ -52,8 +78,8 @@ public final class TestStepHUDSession: @unchecked Sendable {
         _ title: String,
         timeout: TimeInterval? = nil,
         action: () throws -> T
-    ) throws -> T {
-        try show(title, timeout: timeout)
+    ) rethrows -> T {
+        show(title, timeout: timeout)
         return try XCTContext.runActivity(named: title) { _ in
             try action()
         }
@@ -61,7 +87,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
 
     public func cancel() {
         XCUIElementTapInterceptor.deactivate(session: self)
-        transport.cancel()
+        transport?.cancel()
     }
 
     @MainActor
@@ -69,10 +95,9 @@ public final class TestStepHUDSession: @unchecked Sendable {
         on element: XCUIElement,
         originalTap: () -> Void
     ) {
-        var presentationError: Error?
         var didPresentHighlight = false
 
-        if let rect = normalizedRect(for: element) {
+        if let transport, let rect = normalizedRect(for: element) {
             do {
                 let id = UUID()
                 try transport.send(
@@ -81,25 +106,16 @@ public final class TestStepHUDSession: @unchecked Sendable {
                 )
                 didPresentHighlight = true
                 Thread.sleep(forTimeInterval: tapHighlightDelay)
-            } catch {
-                presentationError = error
-            }
+            } catch {}
         }
 
         originalTap()
 
         if didPresentHighlight {
             let id = UUID()
-            try? transport.send(
+            try? transport?.send(
                 .clearHighlight(id: id),
                 timeout: defaultTimeout
-            )
-        }
-
-        if let presentationError {
-            XCTFail(
-                "TestStepHUD could not highlight tap: " +
-                    presentationError.localizedDescription
             )
         }
     }
@@ -279,10 +295,9 @@ public final class TestStepHUDSession: @unchecked Sendable {
         name: String,
         originalAction: () -> Void
     ) {
-        var presentationError: Error?
         var didPresent = false
 
-        if let visual {
+        if let transport, let visual {
             do {
                 try transport.send(
                     .interaction(id: UUID(), visual: visual),
@@ -290,24 +305,15 @@ public final class TestStepHUDSession: @unchecked Sendable {
                 )
                 didPresent = true
                 Thread.sleep(forTimeInterval: tapHighlightDelay)
-            } catch {
-                presentationError = error
-            }
+            } catch {}
         }
 
         originalAction()
 
         if didPresent {
-            try? transport.send(
+            try? transport?.send(
                 .clearInteraction(id: UUID()),
                 timeout: defaultTimeout
-            )
-        }
-
-        if let presentationError {
-            XCTFail(
-                "TestStepHUD could not visualize \(name): " +
-                    presentationError.localizedDescription
             )
         }
     }

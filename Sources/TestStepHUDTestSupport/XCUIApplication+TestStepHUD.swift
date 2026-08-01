@@ -3,14 +3,17 @@ import XCTest
 import TestStepHUDProtocol
 
 public extension XCUIApplication {
-    /// Launches the application and waits until its HUD receiver authenticates.
+    /// Launches the application and attempts to connect its HUD receiver.
     ///
     /// Existing launch arguments and environment values are preserved. Only
     /// TestStepHUD's namespaced environment keys are added. While the returned
     /// session is active, supported `XCUIElement` and `XCUICoordinate`
     /// interactions visualize their geometry before invoking the original
     /// XCUITest implementation. Only one HUD session may be active in a
-    /// UI-test process at a time.
+    /// UI-test process at a time. HUD setup is best-effort: if it cannot be
+    /// completed, the application still launches and the returned session
+    /// becomes a no-op. Inspect `startupError` when HUD availability matters
+    /// to diagnostics.
     ///
     /// - Parameters:
     ///   - timeout: Maximum duration for launch handshakes and HUD commands.
@@ -21,11 +24,33 @@ public extension XCUIApplication {
     func launchWithTestStepHUD(
         timeout: TimeInterval = 5,
         tapHighlightDelay: TimeInterval = 0.5
-    ) throws -> TestStepHUDSession {
-        try XCUIElementTapInterceptor.ensureNoActiveSession()
+    ) -> TestStepHUDSession {
+        do {
+            try XCUIElementTapInterceptor.ensureNoActiveSession()
+        } catch {
+            return TestStepHUDSession(
+                application: self,
+                defaultTimeout: timeout,
+                tapHighlightDelay: tapHighlightDelay,
+                startupError: TestStepHUDSessionError.from(error)
+            )
+        }
 
-        let transport = try TestTransport()
-        let port = try transport.start(timeout: timeout)
+        let transport: TestTransport
+        let port: UInt16
+        do {
+            transport = try TestTransport()
+            port = try transport.start(timeout: timeout)
+        } catch {
+            clearTestStepHUDLaunchEnvironment()
+            launch()
+            return TestStepHUDSession(
+                application: self,
+                defaultTimeout: timeout,
+                tapHighlightDelay: tapHighlightDelay,
+                startupError: TestStepHUDSessionError.from(error)
+            )
+        }
 
         launchEnvironment[TestStepHUDProtocolConstants.portEnvironmentKey] =
             String(port)
@@ -42,13 +67,31 @@ public extension XCUIApplication {
                 transport: transport,
                 application: self,
                 defaultTimeout: timeout,
-                tapHighlightDelay: tapHighlightDelay
+                tapHighlightDelay: tapHighlightDelay,
+                startupError: nil
             )
             try XCUIElementTapInterceptor.activate(session: session)
             return session
         } catch {
             transport.cancel()
-            throw error
+            return TestStepHUDSession(
+                application: self,
+                defaultTimeout: timeout,
+                tapHighlightDelay: tapHighlightDelay,
+                startupError: TestStepHUDSessionError.from(error)
+            )
         }
+    }
+
+    private func clearTestStepHUDLaunchEnvironment() {
+        launchEnvironment.removeValue(
+            forKey: TestStepHUDProtocolConstants.portEnvironmentKey
+        )
+        launchEnvironment.removeValue(
+            forKey: TestStepHUDProtocolConstants.tokenEnvironmentKey
+        )
+        launchEnvironment.removeValue(
+            forKey: TestStepHUDProtocolConstants.versionEnvironmentKey
+        )
     }
 }

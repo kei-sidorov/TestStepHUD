@@ -122,29 +122,29 @@ final class CheckoutUITests: XCTestCase {
     @MainActor
     func testCheckout() throws {
         let app = XCUIApplication()
-        let hud = try app.launchWithTestStepHUD()
+        let hud = app.launchWithTestStepHUD()
 
         addTeardownBlock {
             hud.cancel()
         }
 
-        try hud.step("Find the Continue button") {
+        hud.step("Find the Continue button") {
             XCTAssertTrue(
                 app.buttons["continue"].waitForExistence(timeout: 5)
             )
         }
 
-        try hud.step("Tap Continue") {
+        hud.step("Tap Continue") {
             app.buttons["continue"].tap()
         }
 
-        try hud.step("Verify the confirmation") {
+        hud.step("Verify the confirmation") {
             XCTAssertTrue(
                 app.staticTexts["Order confirmed"].exists
             )
         }
 
-        try hud.hide()
+        hud.hide()
     }
 }
 ```
@@ -155,8 +155,10 @@ final class CheckoutUITests: XCTestCase {
 2. Waits until the HUD has updated and completed main-thread layout.
 3. Runs the closure inside an `XCTContext` activity with the same name.
 
-Missing app integration and command timeouts produce actionable test errors
-instead of hanging.
+HUD setup and presentation are best-effort: missing app integration, a closed
+connection, or a command timeout never fails the UI test or prevents the
+original XCUITest action. `startupError` and `isAvailable` can be inspected
+when HUD availability matters to diagnostics.
 
 ## Automatic interaction visualization
 
@@ -175,7 +177,7 @@ XCUITest calls:
 
 The visual appears before the original XCTest implementation runs and fades
 quickly afterward. If visualization fails, TestStepHUD still performs the
-original action and then records the presentation failure.
+original action without recording an XCTest failure.
 
 Typed content is never transmitted to the application. A typing visual
 contains only the interaction kind and normalized target frame.
@@ -185,7 +187,7 @@ contains only the interaction kind and normalized target frame.
 The default visual lead-in is 0.5 seconds:
 
 ```swift
-let hud = try app.launchWithTestStepHUD(
+let hud = app.launchWithTestStepHUD(
     tapHighlightDelay: 0.35
 )
 ```

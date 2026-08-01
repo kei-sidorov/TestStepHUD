@@ -10,6 +10,14 @@ public enum TestStepHUDSessionError: Error, LocalizedError {
     case sessionAlreadyActive
     case tapInterceptionUnavailable
     case interactionInterceptionUnavailable(String)
+    case startupFailed(String)
+
+    static func from(_ error: Error) -> TestStepHUDSessionError {
+        if let error = error as? TestStepHUDSessionError {
+            return error
+        }
+        return .startupFailed(error.localizedDescription)
+    }
 
     public var errorDescription: String? {
         switch self {
@@ -37,6 +45,8 @@ public enum TestStepHUDSessionError: Error, LocalizedError {
             return "TestStepHUD could not intercept XCUIElement.tap()."
         case let .interactionInterceptionUnavailable(selector):
             return "TestStepHUD could not intercept XCTest selector '\(selector)'."
+        case let .startupFailed(message):
+            return "TestStepHUD could not start: \(message)"
         }
     }
 }
