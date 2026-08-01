@@ -191,26 +191,35 @@ original action without recording an XCTest failure.
 Typed content is never transmitted to the application. A typing visual
 contains only the interaction kind and normalized target frame.
 
-### Interaction lead-in
+## UI-test-side settings
 
-The default visual lead-in is 0.5 seconds:
+Configure connection timing and automatic interaction timing when the test
+launches the application:
 
 ```swift
 let hud = app.launchWithTestStepHUD(
+    timeout: 8,
     tapHighlightDelay: 0.35
 )
 ```
 
-The historical `tapHighlightDelay` name is retained for source compatibility;
-the value applies to every automatic interaction visual and is clamped to
-`0...5` seconds.
+| Parameter | Default | Behavior |
+| --- | --- | --- |
+| `timeout` | `5` seconds | Maximum wait for listener startup, app handshake, and each acknowledged HUD command. A timeout disables that HUD operation but does not fail the UI test. |
+| `tapHighlightDelay` | `0.5` seconds | Time the acknowledged interaction visual remains visible before the original XCUITest action starts. Applies to every automatically intercepted interaction and is clamped to `0...5` seconds. |
 
-## Appearance
+The `tapHighlightDelay` name is retained for source compatibility even though
+it applies to taps, typing, swipes, long presses, drags, and coordinate
+interactions.
+
+## App-side appearance and behavior
 
 The default is a high-contrast translucent card at the top safe area with
 centered, 17-point semibold text and a subtle pulse on every new step.
 
-Configure it when installing the receiver:
+Pass `TestStepHUD.Configuration` to `install()` during app launch. This is the
+single place that controls the card, interaction visuals, home position, and
+element-following behavior for the HUD session:
 
 ```swift
 TestStepHUD.install(
@@ -228,21 +237,75 @@ TestStepHUD.install(
 )
 ```
 
-| Option | Behavior |
-| --- | --- |
-| `backgroundColor` | HUD card color |
-| `backgroundOpacity` | Card opacity, clamped to `0...1` |
-| `position` | `.top`, `.center`, or `.bottom` |
-| `fontSize` | Text size, clamped to `11...42` points |
-| `textAlignment` | `.leading`, `.center`, or `.trailing` |
-| `highlightColor` | Interaction fill, stroke, glow, and path color |
-| `highlightOpacity` | Interaction fill opacity |
-| `movesHUDToHighlightedElement` | Moves the card next to the current interaction |
-| `pulsesHUDOnStepChange` | Pulses the card twice when a new step appears |
+| Option | Default | Values and behavior |
+| --- | --- | --- |
+| `backgroundColor` | `.ink` (`#151B2B`) | Base color of the step card. Use a built-in color or create a custom RGB color. |
+| `backgroundOpacity` | `0.9` | Card opacity, clamped to `0...1`. |
+| `position` | `.top` | Home position inside the safe area: `.top`, `.center`, or `.bottom`. See [Card position](#card-position). |
+| `fontSize` | `17` | Semibold text size, clamped to `11...42` points. Dynamic Type scaling is supported up to 42 points. |
+| `textAlignment` | `.center` | Multiline label alignment: `.leading`, `.center`, or `.trailing`. |
+| `highlightColor` | `.highlight` (`#FFD166`) | Color used for tap highlights, strokes, glows, gesture paths, arrows, ripples, and interaction badges. |
+| `highlightOpacity` | `0.3` | Fill opacity for interaction highlights, clamped to `0...1`; strokes and paths keep the solid `highlightColor`. |
+| `movesHUDToHighlightedElement` | `false` | When `true`, temporarily moves the step card beside the latest element or coordinate interaction. See [Following interactions](#following-interactions). |
+| `pulsesHUDOnStepChange` | `true` | When `true`, scales and fades the card surface twice whenever `step(_:)`, `step(_:action:)`, or `show(_:)` presents new text. |
 
-When element-following is enabled, each interaction moves the card next to its
-target without covering it. A new interaction restarts the idle timer. After
-five seconds without one, the card returns to its configured home position.
+### Custom colors
+
+`TestStepHUD.Color` has three presets and two public initializers:
+
+```swift
+let preset: TestStepHUD.Color = .highlight
+let hex = TestStepHUD.Color(rgb: 0x4F46E5)
+let components = TestStepHUD.Color(
+    red: 79.0 / 255.0,
+    green: 70.0 / 255.0,
+    blue: 229.0 / 255.0
+)
+```
+
+| Preset | RGB value | Intended use |
+| --- | --- | --- |
+| `.ink` | `#151B2B` | Default card background |
+| `.white` | `#FFFFFF` | Light custom surfaces |
+| `.highlight` | `#FFD166` | Default interaction accent |
+
+Opacity is configured separately with `backgroundOpacity` and
+`highlightOpacity`. Step text is always white.
+
+### Card position
+
+`position` defines the card's home position, not the location of interaction
+visuals. The card is horizontally centered, limited to 90% of the safe-area
+width, and grows vertically for multiline text.
+
+| Position | Placement |
+| --- | --- |
+| `.top` | 12 points below the safe area's top edge |
+| `.center` | Vertically centered in the safe area |
+| `.bottom` | 12 points above the safe area's bottom edge |
+
+If `movesHUDToHighlightedElement` is disabled, the card stays at this home
+position until hidden. If following is enabled, `position` is still the place
+the card returns to after the follow timer expires.
+
+### Following interactions
+
+With `movesHUDToHighlightedElement: true`, an intercepted element or
+coordinate interaction temporarily moves the card near its visual target:
+
+- The card prefers the side that keeps it away from the target: above targets
+  in the lower half of the safe area, otherwise below.
+- If the preferred side does not fit, it uses the other side or clamps the
+  card inside the safe area. The normal gap from the target is 16 points.
+- Element interactions follow the visible element frame. Coordinate gestures
+  and drags follow the interaction's starting point.
+- Every new interaction restarts the five-second idle timer. When the timer
+  expires, the card animates back to its configured `position`.
+- A new step can pulse while the card is following an element; the pulse and
+  the outer card movement use independent animations.
+
+Following changes only the step card position. Highlights, arrows, ripples,
+and paths are always drawn at the actual interaction geometry.
 
 ## How it works
 
