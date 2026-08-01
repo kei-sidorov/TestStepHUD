@@ -72,6 +72,19 @@ public final class TestStepHUDSession: @unchecked Sendable {
         )
     }
 
+    /// Presents a named test step without wrapping subsequent test code.
+    ///
+    /// Use this overload when adding a HUD to an existing test should not
+    /// indent the action and assertions inside a closure.
+    @MainActor
+    public func step(
+        _ title: String,
+        timeout: TimeInterval? = nil
+    ) {
+        show(title, timeout: timeout)
+    }
+
+    /// Presents a named test step and runs its action as an XCTest activity.
     @MainActor
     @discardableResult
     public func step<T>(
@@ -79,7 +92,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
         timeout: TimeInterval? = nil,
         action: () throws -> T
     ) rethrows -> T {
-        show(title, timeout: timeout)
+        step(title, timeout: timeout)
         return try XCTContext.runActivity(named: title) { _ in
             try action()
         }

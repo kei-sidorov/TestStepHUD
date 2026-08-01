@@ -120,7 +120,7 @@ import TestStepHUDTestSupport
 
 final class CheckoutUITests: XCTestCase {
     @MainActor
-    func testCheckout() throws {
+    func testCheckout() {
         let app = XCUIApplication()
         let hud = app.launchWithTestStepHUD()
 
@@ -128,24 +128,33 @@ final class CheckoutUITests: XCTestCase {
             hud.cancel()
         }
 
-        hud.step("Find the Continue button") {
-            XCTAssertTrue(
-                app.buttons["continue"].waitForExistence(timeout: 5)
-            )
-        }
+        hud.step("Find the Continue button")
+        XCTAssertTrue(
+            app.buttons["continue"].waitForExistence(timeout: 5)
+        )
 
-        hud.step("Tap Continue") {
-            app.buttons["continue"].tap()
-        }
+        hud.step("Tap Continue")
+        app.buttons["continue"].tap()
 
-        hud.step("Verify the confirmation") {
-            XCTAssertTrue(
-                app.staticTexts["Order confirmed"].exists
-            )
-        }
+        hud.step("Verify the confirmation")
+        XCTAssertTrue(
+            app.staticTexts["Order confirmed"].exists
+        )
 
         hud.hide()
     }
+}
+```
+
+`step(_:)` sends the new step text and waits until the HUD has updated and
+completed main-thread layout. It can be inserted before an existing action or
+assertion without moving that code into a closure.
+
+The closure overload remains available when an XCTest activity is useful:
+
+```swift
+hud.step("Tap Continue") {
+    app.buttons["continue"].tap()
 }
 ```
 

@@ -3,7 +3,7 @@ import TestStepHUDTestSupport
 
 final class TestStepHUDDemoUITests: XCTestCase {
     @MainActor
-    func testRecordedCheckoutFlowShowsReadableSteps() throws {
+    func testRecordedCheckoutFlowShowsReadableSteps() {
         continueAfterFailure = false
 
         let app = XCUIApplication()
@@ -13,41 +13,38 @@ final class TestStepHUDDemoUITests: XCTestCase {
             hud.cancel()
         }
 
-        hud.step("1 of 3 · Find the Continue button") {
-            XCTAssertTrue(
-                app.buttons["continueButton"].waitForExistence(timeout: 5)
-            )
-            keepStepReadableAndAttachScreenshot(
-                named: "01-find-continue"
-            )
-        }
+        hud.step("1 of 3 · Find the Continue button")
+        XCTAssertTrue(
+            app.buttons["continueButton"].waitForExistence(timeout: 5)
+        )
+        keepStepReadableAndAttachScreenshot(
+            named: "01-find-continue"
+        )
 
-        hud.step("2 of 3 · Tap Continue") {
-            app.buttons["continueButton"].tap()
-            keepStepReadableAndAttachScreenshot(
-                named: "02-tap-continue"
-            )
-        }
+        hud.step("2 of 3 · Tap Continue")
+        app.buttons["continueButton"].tap()
+        keepStepReadableAndAttachScreenshot(
+            named: "02-tap-continue"
+        )
 
-        hud.step("3 of 3 · Verify order confirmation") {
-            XCTAssertTrue(
-                app.staticTexts["Order confirmed"].waitForExistence(timeout: 5)
-            )
-            waitAndAttachScreenshot(
-                named: "03-follow-position",
-                delay: 0.5
-            )
-            waitAndAttachScreenshot(
-                named: "04-idle-return-home",
-                delay: 3.4
-            )
-        }
+        hud.step("3 of 3 · Verify order confirmation")
+        XCTAssertTrue(
+            app.staticTexts["Order confirmed"].waitForExistence(timeout: 5)
+        )
+        waitAndAttachScreenshot(
+            named: "03-follow-position",
+            delay: 0.5
+        )
+        waitAndAttachScreenshot(
+            named: "04-idle-return-home",
+            delay: 3.4
+        )
 
         hud.hide()
     }
 
     @MainActor
-    func testRecordedCommonInteractionsAreVisualized() throws {
+    func testRecordedCommonInteractionsAreVisualized() {
         continueAfterFailure = false
 
         let app = XCUIApplication()
@@ -118,7 +115,7 @@ final class TestStepHUDDemoUITests: XCTestCase {
     }
 
     @MainActor
-    func testRejectsSecondActiveHUDSession() throws {
+    func testRejectsSecondActiveHUDSession() {
         continueAfterFailure = false
 
         let firstApplication = XCUIApplication()
