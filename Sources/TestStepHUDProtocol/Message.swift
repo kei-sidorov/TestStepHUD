@@ -3,6 +3,7 @@ import Foundation
 public enum HUDMessageKind: String, Codable, Sendable {
     case hello
     case show
+    case showTestCase
     case hide
     case ping
     case highlight
@@ -117,12 +118,23 @@ public struct HUDInteraction: Codable, Equatable, Sendable {
     }
 }
 
+public struct HUDTestCase: Codable, Equatable, Sendable {
+    public let title: String
+    public let steps: [String]
+
+    public init(title: String, steps: [String]) {
+        self.title = title
+        self.steps = steps
+    }
+}
+
 public struct HUDWireMessage: Codable, Equatable, Sendable {
     public let kind: HUDMessageKind
     public let id: UUID?
     public let token: String?
     public let protocolVersion: Int?
     public let text: String?
+    public let testCase: HUDTestCase?
     public let rect: HUDNormalizedRect?
     public let interaction: HUDInteraction?
     public let success: Bool?
@@ -134,6 +146,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
         token: String? = nil,
         protocolVersion: Int? = nil,
         text: String? = nil,
+        testCase: HUDTestCase? = nil,
         rect: HUDNormalizedRect? = nil,
         interaction: HUDInteraction? = nil,
         success: Bool? = nil,
@@ -144,6 +157,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
         self.token = token
         self.protocolVersion = protocolVersion
         self.text = text
+        self.testCase = testCase
         self.rect = rect
         self.interaction = interaction
         self.success = success
@@ -156,6 +170,18 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
 
     public static func show(id: UUID, text: String) -> Self {
         Self(kind: .show, id: id, text: text)
+    }
+
+    public static func showTestCase(
+        id: UUID,
+        title: String,
+        steps: [String]
+    ) -> Self {
+        Self(
+            kind: .showTestCase,
+            id: id,
+            testCase: HUDTestCase(title: title, steps: steps)
+        )
     }
 
     public static func hide(id: UUID) -> Self {
@@ -208,6 +234,16 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
             throw TestStepHUDProtocolError.missingField("text")
         }
         return text
+    }
+
+    public func testCaseValue() throws -> HUDTestCase {
+        guard kind == .showTestCase else {
+            throw TestStepHUDProtocolError.unexpectedMessage(kind.rawValue)
+        }
+        guard let testCase else {
+            throw TestStepHUDProtocolError.missingField("testCase")
+        }
+        return testCase
     }
 
     public func highlightRect() throws -> HUDNormalizedRect {

@@ -101,6 +101,7 @@ final class AppTransport: @unchecked Sendable {
     private func process(_ message: HUDWireMessage) {
         guard [
             .show,
+            .showTestCase,
             .hide,
             .ping,
             .highlight,

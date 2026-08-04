@@ -17,13 +17,13 @@ public extension XCUIApplication {
     ///
     /// - Parameters:
     ///   - timeout: Maximum duration for launch handshakes and HUD commands.
-    ///   - tapHighlightDelay: Lead-in time for every automatic interaction
-    ///     visual. The historical name is retained for source compatibility.
-    ///     Values are clamped to `0...5` seconds.
+    ///   - presentation: Deliberate pauses used to make recordings readable.
+    ///     The environment-based default is fast unless
+    ///     `TESTSTEPHUD_MODE=visual` is set in the UI-test process.
     @MainActor
     func launchWithTestStepHUD(
         timeout: TimeInterval = 5,
-        tapHighlightDelay: TimeInterval = 0.5
+        presentation: TestStepHUDPresentation = .fromEnvironment()
     ) -> TestStepHUDSession {
         do {
             try XCUIElementTapInterceptor.ensureNoActiveSession()
@@ -31,7 +31,7 @@ public extension XCUIApplication {
             return TestStepHUDSession(
                 application: self,
                 defaultTimeout: timeout,
-                tapHighlightDelay: tapHighlightDelay,
+                presentation: presentation,
                 startupError: TestStepHUDSessionError.from(error)
             )
         }
@@ -47,7 +47,7 @@ public extension XCUIApplication {
             return TestStepHUDSession(
                 application: self,
                 defaultTimeout: timeout,
-                tapHighlightDelay: tapHighlightDelay,
+                presentation: presentation,
                 startupError: TestStepHUDSessionError.from(error)
             )
         }
@@ -67,7 +67,7 @@ public extension XCUIApplication {
                 transport: transport,
                 application: self,
                 defaultTimeout: timeout,
-                tapHighlightDelay: tapHighlightDelay,
+                presentation: presentation,
                 startupError: nil
             )
             try XCUIElementTapInterceptor.activate(session: session)
@@ -77,10 +77,26 @@ public extension XCUIApplication {
             return TestStepHUDSession(
                 application: self,
                 defaultTimeout: timeout,
-                tapHighlightDelay: tapHighlightDelay,
+                presentation: presentation,
                 startupError: TestStepHUDSessionError.from(error)
             )
         }
+    }
+
+    /// Source-compatible overload for the historical interaction delay.
+    /// Test-case introductions remain disabled when this overload is used.
+    @MainActor
+    func launchWithTestStepHUD(
+        timeout: TimeInterval = 5,
+        tapHighlightDelay: TimeInterval
+    ) -> TestStepHUDSession {
+        launchWithTestStepHUD(
+            timeout: timeout,
+            presentation: .init(
+                testCaseDuration: 0,
+                interactionDelay: tapHighlightDelay
+            )
+        )
     }
 
     private func clearTestStepHUDLaunchEnvironment() {

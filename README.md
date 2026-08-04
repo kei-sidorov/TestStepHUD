@@ -37,6 +37,8 @@ result is a recording that communicates both **what the test expects** and
 ## Why TestStepHUD?
 
 - **Readable test intent.** Step text remains visible while the test acts.
+- **Test-case introductions.** Recordings can open with a centered title and
+  the scenario steps.
 - **Visible interactions.** Common element and coordinate actions are
   visualized automatically.
 - **Synchronized recordings.** The test waits for app-side layout before
@@ -128,6 +130,16 @@ final class CheckoutUITests: XCTestCase {
             hud.cancel()
         }
 
+        hud.testCase(
+            "An active purchase does not show the paywall",
+            steps: [
+                "Configure the application for the purchase scenario",
+                "Activate the subscription",
+                "Tap Continue",
+                "Verify that the paywall is not shown"
+            ]
+        )
+
         hud.step("Find the Continue button")
         XCTAssertTrue(
             app.buttons["continue"].waitForExistence(timeout: 5)
@@ -145,6 +157,10 @@ final class CheckoutUITests: XCTestCase {
     }
 }
 ```
+
+`testCase(_:steps:)` shows a separate centered card and keeps it visible for
+the configured recording duration. In the default fast profile it is a strict
+no-op, so adding an introduction does not slow automated test runs.
 
 `step(_:)` sends the new step text and waits until the HUD has updated and
 completed main-thread layout. It can be inserted before an existing action or
@@ -209,31 +225,58 @@ original action without recording an XCTest failure.
 Typed content is never transmitted to the application. A typing visual
 contains only the interaction kind and normalized target frame.
 
-## UI-test-side settings
+## Fast and visual runs
 
-Configure connection timing and automatic interaction timing when the test
-launches the application:
+`launchWithTestStepHUD()` reads a presentation profile from the UI-test
+process environment. The default is **fast**:
+
+- `testCase(_:steps:)` is skipped.
+- Automatic interaction visuals add no artificial delay.
+- Regular `show`, `step`, and interaction commands remain synchronized with
+  the application.
+
+Enable recording-friendly pauses in an Xcode Test Plan, scheme environment,
+or the environment that launches `xcodebuild`:
+
+```sh
+TESTSTEPHUD_MODE=visual xcodebuild test ...
+```
+
+| Environment variable | Fast/default | Visual default | Behavior |
+| --- | --- | --- | --- |
+| `TESTSTEPHUD_MODE` | unset or `fast` | `visual` | Only `visual` enables deliberate pauses. |
+| `TESTSTEPHUD_CASE_DURATION` | `0` | `4` seconds | Time the centered test-case card remains visible; clamped to `0...60`. |
+| `TESTSTEPHUD_INTERACTION_DELAY` | `0` | `0.5` seconds | Lead-in before the original intercepted interaction; clamped to `0...5`. |
+
+Profiles can also be selected explicitly in code:
 
 ```swift
-let hud = app.launchWithTestStepHUD(
-    timeout: 8,
-    tapHighlightDelay: 0.35
+let fastHUD = app.launchWithTestStepHUD(presentation: .fast)
+
+let visualHUD = app.launchWithTestStepHUD(
+    presentation: .visual(
+        testCaseDuration: 5,
+        interactionDelay: 0.6
+    )
 )
 ```
 
-| Parameter | Default | Behavior |
-| --- | --- | --- |
-| `timeout` | `5` seconds | Maximum wait for listener startup, app handshake, and each acknowledged HUD command. A timeout disables that HUD operation but does not fail the UI test. |
-| `tapHighlightDelay` | `0.5` seconds | Time the acknowledged interaction visual remains visible before the original XCUITest action starts. Applies to every automatically intercepted interaction and is clamped to `0...5` seconds. |
+The historical overload remains source-compatible:
 
-The `tapHighlightDelay` name is retained for source compatibility even though
-it applies to taps, typing, swipes, long presses, drags, and coordinate
-interactions.
+```swift
+let hud = app.launchWithTestStepHUD(tapHighlightDelay: 0.35)
+```
+
+That overload configures only the interaction delay and leaves test-case
+introductions disabled. `timeout` still defaults to five seconds and controls
+listener startup, app handshake, and each acknowledged HUD command.
 
 ## App-side appearance and behavior
 
-The default is a high-contrast translucent card at the top safe area with
-centered, 17-point semibold text and a subtle pulse on every new step.
+The default step HUD is a high-contrast translucent card at the top safe area
+with centered, 17-point semibold text and a subtle pulse on every new step.
+The separate test-case card always appears in the center and uses the same app-
+side colors and base font size.
 
 Pass `TestStepHUD.Configuration` to `install()` during app launch. This is the
 single place that controls the card, interaction visuals, home position, and

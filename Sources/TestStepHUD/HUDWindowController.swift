@@ -9,6 +9,10 @@ final class HUDWindowController {
     private var window: PassthroughHUDWindow?
     private var rootViewController: HUDViewController?
     private var pendingShow: (text: String, completion: ShowCompletion)?
+    private var pendingTestCase: (
+        testCase: HUDTestCase,
+        completion: ShowCompletion
+    )?
     private var pendingHighlight: (
         rect: HUDNormalizedRect,
         completion: ShowCompletion
@@ -56,15 +60,41 @@ final class HUDWindowController {
         completion(.success(()))
     }
 
+    func showTestCase(
+        _ testCase: HUDTestCase,
+        completion: @escaping ShowCompletion
+    ) {
+        currentText = nil
+        pendingShow?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingShow = nil
+        guard let scene = foregroundScene() else {
+            pendingTestCase?.completion(
+                .failure(HUDPresentationError.supersededBeforePresentation)
+            )
+            pendingTestCase = (testCase, completion)
+            return
+        }
+
+        present(testCase, in: scene)
+        completion(.success(()))
+    }
+
     func hide() {
         pendingShow?.completion(
             .failure(HUDPresentationError.hiddenBeforePresentation)
         )
         pendingShow = nil
+        pendingTestCase?.completion(
+            .failure(HUDPresentationError.hiddenBeforePresentation)
+        )
+        pendingTestCase = nil
         currentText = nil
         clearHighlight()
         clearInteraction()
         rootViewController?.hideStep()
+        rootViewController?.hideTestCase()
         window?.isHidden = true
     }
 
@@ -141,6 +171,12 @@ final class HUDWindowController {
             pendingShow.completion(.success(()))
         }
 
+        if let pendingTestCase {
+            self.pendingTestCase = nil
+            present(pendingTestCase.testCase, in: scene)
+            pendingTestCase.completion(.success(()))
+        }
+
         if let pendingHighlight {
             self.pendingHighlight = nil
             presentHighlight(pendingHighlight.rect, in: scene)
@@ -157,6 +193,16 @@ final class HUDWindowController {
     private func present(_ text: String, in scene: UIWindowScene) {
         let viewController = ensureWindow(in: scene)
         viewController.show(text)
+        window?.isHidden = false
+
+        // The show ACK is emitted only after this synchronous main-thread layout.
+        viewController.view.setNeedsLayout()
+        viewController.view.layoutIfNeeded()
+    }
+
+    private func present(_ testCase: HUDTestCase, in scene: UIWindowScene) {
+        let viewController = ensureWindow(in: scene)
+        viewController.showTestCase(testCase)
         window?.isHidden = false
 
         // The show ACK is emitted only after this synchronous main-thread layout.
@@ -250,6 +296,9 @@ private final class HUDViewController: UIViewController {
     private let cardView = UIView()
     private let cardSurfaceView = UIView()
     private let label = UILabel()
+    private lazy var testCaseView = TestCaseCardView(
+        configuration: configuration
+    )
     private let highlightView = UIView()
     private lazy var interactionOverlayView = InteractionOverlayView(
         accentColor: configuration.highlightStrokeColor,
@@ -319,10 +368,12 @@ private final class HUDViewController: UIViewController {
 
         interactionOverlayView.translatesAutoresizingMaskIntoConstraints = false
         interactionOverlayView.isAccessibilityElement = false
+        testCaseView.translatesAutoresizingMaskIntoConstraints = false
 
         rootView.addSubview(interactionOverlayView)
         rootView.addSubview(highlightView)
         rootView.addSubview(cardView)
+        rootView.addSubview(testCaseView)
         cardView.addSubview(cardSurfaceView)
         cardSurfaceView.addSubview(label)
 
@@ -345,6 +396,16 @@ private final class HUDViewController: UIViewController {
             ),
             interactionOverlayView.bottomAnchor.constraint(
                 equalTo: rootView.bottomAnchor
+            ),
+            testCaseView.centerXAnchor.constraint(
+                equalTo: safeArea.centerXAnchor
+            ),
+            testCaseView.centerYAnchor.constraint(
+                equalTo: safeArea.centerYAnchor
+            ),
+            testCaseView.widthAnchor.constraint(
+                equalTo: safeArea.widthAnchor,
+                multiplier: 0.88
             ),
             cardView.centerXAnchor.constraint(equalTo: safeArea.centerXAnchor),
             widthConstraint,
@@ -424,6 +485,19 @@ private final class HUDViewController: UIViewController {
         cardSurfaceView.transform = .identity
         cardView.isHidden = true
         label.text = nil
+    }
+
+    func showTestCase(_ testCase: HUDTestCase) {
+        hideStep()
+        testCaseView.configure(with: testCase)
+        testCaseView.isHidden = false
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+    }
+
+    func hideTestCase() {
+        testCaseView.isHidden = true
+        testCaseView.reset()
     }
 
     func showHighlight(_ rect: HUDNormalizedRect) {

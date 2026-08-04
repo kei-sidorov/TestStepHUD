@@ -55,6 +55,13 @@ final class HUDRuntime {
                 _ = try message.commandID()
                 let text = try message.showText()
                 windowController.show(text, completion: completion)
+            case .showTestCase:
+                _ = try message.commandID()
+                let testCase = try message.testCaseValue()
+                windowController.showTestCase(
+                    testCase,
+                    completion: completion
+                )
             case .hide:
                 _ = try message.commandID()
                 windowController.hide()

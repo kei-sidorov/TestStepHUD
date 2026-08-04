@@ -7,11 +7,24 @@ final class TestStepHUDDemoUITests: XCTestCase {
         continueAfterFailure = false
 
         let app = XCUIApplication()
-        let hud = app.launchWithTestStepHUD(timeout: 10)
+        let hud = app.launchWithTestStepHUD(
+            timeout: 10,
+            presentation: .visual(testCaseDuration: 3)
+        )
 
         addTeardownBlock {
             hud.cancel()
         }
+        requireAvailableHUD(hud)
+
+        hud.testCase(
+            "Completing checkout shows the order confirmation",
+            steps: [
+                "Find the Continue button",
+                "Tap Continue",
+                "Verify the order confirmation"
+            ]
+        )
 
         hud.step("1 of 3 · Find the Continue button")
         XCTAssertTrue(
@@ -48,10 +61,14 @@ final class TestStepHUDDemoUITests: XCTestCase {
         continueAfterFailure = false
 
         let app = XCUIApplication()
-        let hud = app.launchWithTestStepHUD(timeout: 10)
+        let hud = app.launchWithTestStepHUD(
+            timeout: 10,
+            presentation: .visual(testCaseDuration: 0)
+        )
         addTeardownBlock {
             hud.cancel()
         }
+        requireAvailableHUD(hud)
 
         let title = app.staticTexts["demoTitle"]
         let item = app.staticTexts["itemLabel"]
@@ -135,6 +152,15 @@ final class TestStepHUDDemoUITests: XCTestCase {
         }
 
         firstSession.cancel()
+    }
+
+    @MainActor
+    private func requireAvailableHUD(_ hud: TestStepHUDSession) {
+        XCTAssertTrue(
+            hud.isAvailable,
+            hud.startupError?.localizedDescription ??
+                "The TestStepHUD session is unavailable."
+        )
     }
 
     @MainActor

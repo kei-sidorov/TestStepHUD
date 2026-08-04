@@ -19,6 +19,7 @@
 		D0000000000000000000000A /* TestStepHUD in Frameworks */ = {isa = PBXBuildFile; productRef = J00000000000000000000001 /* TestStepHUD */; };
 		D0000000000000000000000B /* TestStepHUDTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = J00000000000000000000002 /* TestStepHUDTestSupport */; };
 		D0000000000000000000000C /* TestTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000C /* TestTransportTests.swift */; };
+		D0000000000000000000000D /* TestStepHUDPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000D /* TestStepHUDPresentationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +45,7 @@
 		C0000000000000000000000A /* AcknowledgementRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcknowledgementRouterTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000000B /* TestStepHUDProtocolTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestStepHUDProtocolTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0000000000000000000000C /* TestTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestTransportTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000000D /* TestStepHUDPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestStepHUDPresentationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +123,7 @@
 				C00000000000000000000009 /* HandshakeValidatorTests.swift */,
 				C0000000000000000000000A /* AcknowledgementRouterTests.swift */,
 				C0000000000000000000000C /* TestTransportTests.swift */,
+				C0000000000000000000000D /* TestStepHUDPresentationTests.swift */,
 			);
 			name = TestStepHUDProtocolTests;
 			path = ../../Tests/TestStepHUDProtocolTests;
@@ -288,6 +291,7 @@
 				D00000000000000000000008 /* HandshakeValidatorTests.swift in Sources */,
 				D00000000000000000000009 /* AcknowledgementRouterTests.swift in Sources */,
 				D0000000000000000000000C /* TestTransportTests.swift in Sources */,
+				D0000000000000000000000D /* TestStepHUDPresentationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -6,7 +6,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
     private let transport: TestTransport?
     private let application: XCUIApplication
     private let defaultTimeout: TimeInterval
-    private let tapHighlightDelay: TimeInterval
+    private let presentation: TestStepHUDPresentation
     private let cancellationLock = NSLock()
     private var isCancelled = false
 
@@ -23,26 +23,26 @@ public final class TestStepHUDSession: @unchecked Sendable {
         transport: TestTransport,
         application: XCUIApplication,
         defaultTimeout: TimeInterval,
-        tapHighlightDelay: TimeInterval,
+        presentation: TestStepHUDPresentation,
         startupError: TestStepHUDSessionError?
     ) {
         self.transport = transport
         self.application = application
         self.defaultTimeout = defaultTimeout
-        self.tapHighlightDelay = min(max(tapHighlightDelay, 0), 5)
+        self.presentation = presentation
         self.startupError = startupError
     }
 
     init(
         application: XCUIApplication,
         defaultTimeout: TimeInterval,
-        tapHighlightDelay: TimeInterval,
+        presentation: TestStepHUDPresentation,
         startupError: TestStepHUDSessionError
     ) {
         transport = nil
         self.application = application
         self.defaultTimeout = defaultTimeout
-        self.tapHighlightDelay = min(max(tapHighlightDelay, 0), 5)
+        self.presentation = presentation
         self.startupError = startupError
     }
 
@@ -71,6 +71,40 @@ public final class TestStepHUDSession: @unchecked Sendable {
             .hide(id: id),
             timeout: timeout ?? defaultTimeout
         )
+    }
+
+    /// Presents a centered test-case card, keeps it readable for the
+    /// configured visual duration, and hides it before the test continues.
+    /// Fast mode makes this method a strict no-op.
+    @MainActor
+    public func testCase(
+        _ title: String,
+        steps: [String],
+        timeout: TimeInterval? = nil
+    ) {
+        guard
+            presentation.testCaseDuration > 0,
+            !hasCancelled,
+            let transport
+        else {
+            return
+        }
+
+        do {
+            try transport.send(
+                .showTestCase(
+                    id: UUID(),
+                    title: title,
+                    steps: steps
+                ),
+                timeout: timeout ?? defaultTimeout
+            )
+        } catch {
+            return
+        }
+
+        Thread.sleep(forTimeInterval: presentation.testCaseDuration)
+        hide(timeout: timeout)
     }
 
     /// Presents a named test step without wrapping subsequent test code.
@@ -141,7 +175,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
                     timeout: defaultTimeout
                 )
                 didPresentHighlight = true
-                Thread.sleep(forTimeInterval: tapHighlightDelay)
+                pauseBeforeInteractionIfNeeded()
             } catch {}
         }
 
@@ -340,7 +374,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
                     timeout: defaultTimeout
                 )
                 didPresent = true
-                Thread.sleep(forTimeInterval: tapHighlightDelay)
+                pauseBeforeInteractionIfNeeded()
             } catch {}
         }
 
@@ -352,6 +386,11 @@ public final class TestStepHUDSession: @unchecked Sendable {
                 timeout: defaultTimeout
             )
         }
+    }
+
+    private func pauseBeforeInteractionIfNeeded() {
+        guard presentation.interactionDelay > 0 else { return }
+        Thread.sleep(forTimeInterval: presentation.interactionDelay)
     }
 
     @MainActor

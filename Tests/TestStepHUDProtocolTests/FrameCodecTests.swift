@@ -41,6 +41,40 @@ final class FrameCodecTests: XCTestCase {
         XCTAssertEqual(try decoded.highlightRect(), message.rect)
     }
 
+    func testRoundTripTestCaseMessage() throws {
+        let message = HUDWireMessage.showTestCase(
+            id: UUID(),
+            title: "Active purchase does not show the paywall",
+            steps: [
+                "Configure the application",
+                "Activate the subscription",
+                "Verify that the paywall is not shown"
+            ]
+        )
+
+        let frame = try HUDFrameEncoder.encode(message)
+        var decoder = HUDFrameDecoder()
+        let payload = try XCTUnwrap(decoder.append(frame).first)
+        let decoded = try HUDMessageCoding.decode(payload)
+
+        XCTAssertEqual(decoded, message)
+        XCTAssertEqual(try decoded.testCaseValue(), message.testCase)
+    }
+
+    func testRejectsTestCaseMessageWithoutPayload() {
+        let message = HUDWireMessage(
+            kind: .showTestCase,
+            id: UUID()
+        )
+
+        XCTAssertThrowsError(try message.testCaseValue()) { error in
+            XCTAssertEqual(
+                error as? TestStepHUDProtocolError,
+                .missingField("testCase")
+            )
+        }
+    }
+
     func testRejectsInvalidNormalizedHighlightRect() {
         let message = HUDWireMessage.highlight(
             id: UUID(),
