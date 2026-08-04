@@ -33,6 +33,12 @@ final class HUDRuntime {
             }
         }
 
+        transport.terminationHandler = { [weak windowController] in
+            Task { @MainActor [weak windowController] in
+                windowController?.hide()
+            }
+        }
+
         self.windowController = windowController
         self.transport = transport
         transport.start()

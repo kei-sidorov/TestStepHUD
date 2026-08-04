@@ -169,6 +169,24 @@ connection, or a command timeout never fails the UI test or prevents the
 original XCUITest action. `startupError` and `isAvailable` can be inspected
 when HUD availability matters to diagnostics.
 
+### System UI
+
+Hide the overlay before presenting system-managed UI such as a document picker,
+share sheet, or permission alert. If the HUD session is finished, `cancel()`
+does this for you: it sends an acknowledged `hide` command before disconnecting
+the UI-test transport, so a separate `hide()` call is unnecessary.
+
+```swift
+hud.show("Choose a folder")
+hud.cancel()
+
+// The app can now present UIDocumentPickerViewController.
+```
+
+When the test needs the HUD again after the system dialog, keep the session
+active and use `hide()` before the dialog instead. You can later call `show()`
+or `step(_:)` on the same session.
+
 ## Automatic interaction visualization
 
 After `launchWithTestStepHUD()` returns, TestStepHUD observes ordinary

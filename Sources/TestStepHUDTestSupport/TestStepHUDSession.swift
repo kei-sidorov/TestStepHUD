@@ -7,6 +7,8 @@ public final class TestStepHUDSession: @unchecked Sendable {
     private let application: XCUIApplication
     private let defaultTimeout: TimeInterval
     private let tapHighlightDelay: TimeInterval
+    private let cancellationLock = NSLock()
+    private var isCancelled = false
 
     /// The setup error when HUD startup was unavailable. A session with a
     /// startup error safely ignores HUD commands while the UI test continues.
@@ -45,8 +47,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
     }
 
     deinit {
-        XCUIElementTapInterceptor.deactivate(session: self)
-        transport?.cancel()
+        cancel()
     }
 
     @MainActor
@@ -54,7 +55,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
         _ text: String,
         timeout: TimeInterval? = nil
     ) {
-        guard let transport else { return }
+        guard !hasCancelled, let transport else { return }
         let id = UUID()
         try? transport.send(
             .show(id: id, text: text),
@@ -64,7 +65,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
 
     @MainActor
     public func hide(timeout: TimeInterval? = nil) {
-        guard let transport else { return }
+        guard !hasCancelled, let transport else { return }
         let id = UUID()
         try? transport.send(
             .hide(id: id),
@@ -98,9 +99,31 @@ public final class TestStepHUDSession: @unchecked Sendable {
         }
     }
 
+    /// Ends the HUD session and hides any displayed app-side HUD first.
+    ///
+    /// Call this before handing control to system UI when the HUD session is
+    /// finished. The original XCUITest behavior remains available after the
+    /// session has been cancelled.
     public func cancel() {
+        guard beginCancellation() else { return }
+
         XCUIElementTapInterceptor.deactivate(session: self)
-        transport?.cancel()
+        transport?.cancelAfterHidingHUD(timeout: defaultTimeout)
+    }
+
+    private var hasCancelled: Bool {
+        cancellationLock.lock()
+        defer { cancellationLock.unlock() }
+        return isCancelled
+    }
+
+    private func beginCancellation() -> Bool {
+        cancellationLock.lock()
+        defer { cancellationLock.unlock() }
+
+        guard !isCancelled else { return false }
+        isCancelled = true
+        return true
     }
 
     @MainActor

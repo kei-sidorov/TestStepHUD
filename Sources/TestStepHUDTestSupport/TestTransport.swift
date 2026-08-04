@@ -153,6 +153,17 @@ final class TestTransport: @unchecked Sendable {
         }
     }
 
+    /// Hides any app-side HUD that is currently shown before ending the
+    /// connection. The hide command is best-effort so cancellation remains
+    /// safe when the app has already disconnected.
+    func cancelAfterHidingHUD(timeout: TimeInterval) {
+        try? send(
+            .hide(id: UUID()),
+            timeout: timeout
+        )
+        cancel()
+    }
+
     func cancel() {
         queue.async { [weak self] in
             guard let self else { return }

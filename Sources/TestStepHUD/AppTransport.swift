@@ -9,6 +9,7 @@ final class AppTransport: @unchecked Sendable {
     ) -> Void
 
     var commandHandler: CommandHandler?
+    var terminationHandler: (@Sendable () -> Void)?
 
     private let connection: NWConnection
     private let queue = DispatchQueue(
@@ -19,6 +20,7 @@ final class AppTransport: @unchecked Sendable {
     private let protocolVersion: Int
     private var frameDecoder = HUDFrameDecoder()
     private var didSendHello = false
+    private var didTerminate = false
 
     init(configuration: AppLaunchConfiguration) {
         let host = NWEndpoint.Host("127.0.0.1")
@@ -40,6 +42,7 @@ final class AppTransport: @unchecked Sendable {
                 self.sendHelloIfNeeded()
             case .failed, .cancelled:
                 self.connection.stateUpdateHandler = nil
+                self.terminateIfNeeded()
             default:
                 break
             }
@@ -165,5 +168,12 @@ final class AppTransport: @unchecked Sendable {
         } catch {
             connection.cancel()
         }
+    }
+
+    private func terminateIfNeeded() {
+        guard !didTerminate else { return }
+        didTerminate = true
+        commandHandler = nil
+        terminationHandler?()
     }
 }
