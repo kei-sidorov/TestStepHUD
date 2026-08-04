@@ -41,6 +41,8 @@ result is a recording that communicates both **what the test expects** and
   the scenario steps.
 - **Visible interactions.** Common element and coordinate actions are
   visualized automatically.
+- **Visible failures.** XCTest issues replace the current step with a centered
+  red failure card before the test finishes.
 - **Synchronized recordings.** The test waits for app-side layout before
   continuing.
 - **Zero production behavior.** `TestStepHUD.install()` is a strict no-op
@@ -185,6 +187,10 @@ connection, or a command timeout never fails the UI test or prevents the
 original XCUITest action. `startupError` and `isAvailable` can be inspected
 when HUD availability matters to diagnostics.
 
+Failed assertions need no wrapper or additional API. While the session is
+active, TestStepHUD observes XCTest issues and presents their description in
+the application before XCTest continues or ends the test.
+
 ### System UI
 
 Hide the overlay before presenting system-managed UI such as a document picker,
@@ -225,6 +231,27 @@ original action without recording an XCTest failure.
 Typed content is never transmitted to the application. A typing visual
 contains only the interaction kind and normalized target frame.
 
+## Automatic failure visualization
+
+An active HUD session observes ordinary XCTest failures, including failed
+`XCTAssert*` and `XCTFail` calls, thrown errors, performance regressions, and
+XCTest system errors. It does not swizzle assertion functions or change their
+behavior.
+
+When XCTest records an issue, TestStepHUD:
+
+1. Replaces the current step or test-case card with a centered red card.
+2. Shows a cross, the issue category, XCTest's compact description, and the
+   source file name and line when available.
+3. Waits for acknowledged app-side layout.
+4. Keeps the card visible for the configured failure duration so it remains
+   readable even when `continueAfterFailure` is `false`.
+
+Only the source file's last path component is transmitted; local directory
+paths are omitted. Descriptions are bounded before transport. Failures remain
+best-effort diagnostics: an unavailable HUD never creates another XCTest
+issue. Issues suppressed by `XCTExpectFailure` are not presented as failures.
+
 ## Fast and visual runs
 
 `launchWithTestStepHUD()` reads a presentation profile from the UI-test
@@ -232,6 +259,8 @@ process environment. The default is **fast**:
 
 - `testCase(_:steps:)` is skipped.
 - Automatic interaction visuals add no artificial delay.
+- Successful tests receive no presentation pauses; a failure card remains
+  visible for three seconds because the test may end immediately afterward.
 - Regular `show`, `step`, and interaction commands remain synchronized with
   the application.
 
@@ -244,9 +273,10 @@ TESTSTEPHUD_MODE=visual xcodebuild test ...
 
 | Environment variable | Fast/default | Visual default | Behavior |
 | --- | --- | --- | --- |
-| `TESTSTEPHUD_MODE` | unset or `fast` | `visual` | Only `visual` enables deliberate pauses. |
+| `TESTSTEPHUD_MODE` | unset or `fast` | `visual` | Only `visual` enables successful-run pauses. |
 | `TESTSTEPHUD_CASE_DURATION` | `0` | `4` seconds | Time the centered test-case card remains visible; clamped to `0...60`. |
 | `TESTSTEPHUD_INTERACTION_DELAY` | `0` | `0.5` seconds | Lead-in before the original intercepted interaction; clamped to `0...5`. |
+| `TESTSTEPHUD_FAILURE_DURATION` | `3` seconds | `3` seconds | Minimum time a failure card remains readable; clamped to `0...60` in both modes. |
 
 Profiles can also be selected explicitly in code:
 
@@ -256,7 +286,8 @@ let fastHUD = app.launchWithTestStepHUD(presentation: .fast)
 let visualHUD = app.launchWithTestStepHUD(
     presentation: .visual(
         testCaseDuration: 5,
-        interactionDelay: 0.6
+        interactionDelay: 0.6,
+        failureDuration: 4
     )
 )
 ```
@@ -277,6 +308,10 @@ The default step HUD is a high-contrast translucent card at the top safe area
 with centered, 17-point semibold text and a subtle pulse on every new step.
 The separate test-case card always appears in the center and uses the same app-
 side colors and base font size.
+
+Failure cards also use the existing non-key HUD window but intentionally have
+a fixed red appearance. They replace other cards, highlights, and interaction
+visuals so the recorded failure remains unambiguous.
 
 Pass `TestStepHUD.Configuration` to `install()` during app launch. This is the
 single place that controls the card, interaction visuals, home position, and
@@ -378,7 +413,7 @@ Generate random session token
 Add namespaced launch environment   ───▶ TestStepHUD.install()
                                          Connect back over loopback
 Validate token + protocol version   ◀─── Authenticated hello
-Send show / interaction command     ───▶ Update non-key HUD UIWindow
+Send show / interaction / failure   ───▶ Update non-key HUD UIWindow
 Wait for matching UUID ACK          ◀─── ACK after main-thread layout
 Execute the original XCTest action
 ```
@@ -409,6 +444,7 @@ The app-side HUD uses a separate transparent `UIWindow`:
 - Typed strings never cross the transport.
 - The application product does not link XCTest or swizzle application code.
 - Interaction interception exists only inside the UI-test runner.
+- XCTest issue observation exists only while a HUD session is active.
 - Cancellation closes all candidates, the authenticated connection, pending
   acknowledgements, and the listener.
 

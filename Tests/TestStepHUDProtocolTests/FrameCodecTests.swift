@@ -75,6 +75,39 @@ final class FrameCodecTests: XCTestCase {
         }
     }
 
+    func testRoundTripFailureMessage() throws {
+        let message = HUDWireMessage.showFailure(
+            id: UUID(),
+            failure: HUDTestFailure(
+                title: "Assertion failed",
+                message: "XCTAssertTrue failed - Continue button is missing",
+                location: "CheckoutUITests.swift:42"
+            )
+        )
+
+        let frame = try HUDFrameEncoder.encode(message)
+        var decoder = HUDFrameDecoder()
+        let payload = try XCTUnwrap(decoder.append(frame).first)
+        let decoded = try HUDMessageCoding.decode(payload)
+
+        XCTAssertEqual(decoded, message)
+        XCTAssertEqual(try decoded.failureValue(), message.failure)
+    }
+
+    func testRejectsFailureMessageWithoutPayload() {
+        let message = HUDWireMessage(
+            kind: .showFailure,
+            id: UUID()
+        )
+
+        XCTAssertThrowsError(try message.failureValue()) { error in
+            XCTAssertEqual(
+                error as? TestStepHUDProtocolError,
+                .missingField("failure")
+            )
+        }
+    }
+
     func testRejectsInvalidNormalizedHighlightRect() {
         let message = HUDWireMessage.highlight(
             id: UUID(),

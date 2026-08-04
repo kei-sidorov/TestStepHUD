@@ -46,6 +46,12 @@ contains a video where each step is readable.
   position.
 - New step cards pulse by default. Pulse animation must remain independent of
   the outer card translation used by element-following.
+- While a HUD session is active, the test-side product observes recorded
+  `XCTIssue` values without swizzling assertion functions. Failure presentation
+  is best-effort and must never create another XCTest issue.
+- Failure cards use the existing app-side HUD window, replace other transient
+  visuals, acknowledge only after main-thread layout, and remain visible long
+  enough to be readable when XCTest stops the test after a failure.
 - The HUD uses a separate, non-key `UIWindow`, ignores all hit testing, and is
   hidden from accessibility.
 

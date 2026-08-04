@@ -1,7 +1,7 @@
 import Foundation
 
 public enum TestStepHUDProtocolConstants {
-    public static let version = 4
+    public static let version = 5
     public static let maximumFrameSize = 64 * 1024
 
     public static let portEnvironmentKey = "TESTSTEPHUD_PORT"

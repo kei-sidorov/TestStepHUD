@@ -9,11 +9,11 @@ public extension XCUIApplication {
     /// TestStepHUD's namespaced environment keys are added. While the returned
     /// session is active, supported `XCUIElement` and `XCUICoordinate`
     /// interactions visualize their geometry before invoking the original
-    /// XCUITest implementation. Only one HUD session may be active in a
-    /// UI-test process at a time. HUD setup is best-effort: if it cannot be
-    /// completed, the application still launches and the returned session
-    /// becomes a no-op. Inspect `startupError` when HUD availability matters
-    /// to diagnostics.
+    /// XCUITest implementation, and recorded XCTest issues present a centered
+    /// failure card. Only one HUD session may be active in a UI-test process at
+    /// a time. HUD setup is best-effort: if it cannot be completed, the
+    /// application still launches and the returned session becomes a no-op.
+    /// Inspect `startupError` when HUD availability matters to diagnostics.
     ///
     /// - Parameters:
     ///   - timeout: Maximum duration for launch handshakes and HUD commands.
@@ -71,6 +71,7 @@ public extension XCUIApplication {
                 startupError: nil
             )
             try XCUIElementTapInterceptor.activate(session: session)
+            session.activateFailureObservation()
             return session
         } catch {
             transport.cancel()

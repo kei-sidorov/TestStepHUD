@@ -13,6 +13,10 @@ final class HUDWindowController {
         testCase: HUDTestCase,
         completion: ShowCompletion
     )?
+    private var pendingFailure: (
+        failure: HUDTestFailure,
+        completion: ShowCompletion
+    )?
     private var pendingHighlight: (
         rect: HUDNormalizedRect,
         completion: ShowCompletion
@@ -22,6 +26,7 @@ final class HUDWindowController {
         completion: ShowCompletion
     )?
     private var currentText: String?
+    private var currentFailure: HUDTestFailure?
     private var sceneActivationObserver: NSObjectProtocol?
 
     init(configuration: TestStepHUD.Configuration) {
@@ -48,6 +53,11 @@ final class HUDWindowController {
         completion: @escaping ShowCompletion
     ) {
         currentText = text
+        currentFailure = nil
+        pendingFailure?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingFailure = nil
         guard let scene = foregroundScene() else {
             pendingShow?.completion(
                 .failure(HUDPresentationError.supersededBeforePresentation)
@@ -65,10 +75,15 @@ final class HUDWindowController {
         completion: @escaping ShowCompletion
     ) {
         currentText = nil
+        currentFailure = nil
         pendingShow?.completion(
             .failure(HUDPresentationError.supersededBeforePresentation)
         )
         pendingShow = nil
+        pendingFailure?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingFailure = nil
         guard let scene = foregroundScene() else {
             pendingTestCase?.completion(
                 .failure(HUDPresentationError.supersededBeforePresentation)
@@ -81,6 +96,43 @@ final class HUDWindowController {
         completion(.success(()))
     }
 
+    func showFailure(
+        _ failure: HUDTestFailure,
+        completion: @escaping ShowCompletion
+    ) {
+        currentText = nil
+        currentFailure = failure
+
+        pendingShow?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingShow = nil
+        pendingTestCase?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingTestCase = nil
+        pendingHighlight?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingHighlight = nil
+        pendingInteraction?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingInteraction = nil
+        pendingFailure?.completion(
+            .failure(HUDPresentationError.supersededBeforePresentation)
+        )
+        pendingFailure = nil
+
+        guard let scene = foregroundScene() else {
+            pendingFailure = (failure, completion)
+            return
+        }
+
+        present(failure, in: scene)
+        completion(.success(()))
+    }
+
     func hide() {
         pendingShow?.completion(
             .failure(HUDPresentationError.hiddenBeforePresentation)
@@ -90,11 +142,17 @@ final class HUDWindowController {
             .failure(HUDPresentationError.hiddenBeforePresentation)
         )
         pendingTestCase = nil
+        pendingFailure?.completion(
+            .failure(HUDPresentationError.hiddenBeforePresentation)
+        )
+        pendingFailure = nil
         currentText = nil
+        currentFailure = nil
         clearHighlight()
         clearInteraction()
         rootViewController?.hideStep()
         rootViewController?.hideTestCase()
+        rootViewController?.hideFailure()
         window?.isHidden = true
     }
 
@@ -125,7 +183,7 @@ final class HUDWindowController {
         }
 
         rootViewController.clearHighlight { [weak self] in
-            guard let self, currentText == nil else { return }
+            guard let self, !hasPersistentContent else { return }
             window?.isHidden = true
         }
     }
@@ -157,7 +215,7 @@ final class HUDWindowController {
         }
 
         rootViewController.clearInteraction { [weak self] in
-            guard let self, currentText == nil else { return }
+            guard let self, !hasPersistentContent else { return }
             window?.isHidden = true
         }
     }
@@ -175,6 +233,12 @@ final class HUDWindowController {
             self.pendingTestCase = nil
             present(pendingTestCase.testCase, in: scene)
             pendingTestCase.completion(.success(()))
+        }
+
+        if let pendingFailure {
+            self.pendingFailure = nil
+            present(pendingFailure.failure, in: scene)
+            pendingFailure.completion(.success(()))
         }
 
         if let pendingHighlight {
@@ -206,6 +270,16 @@ final class HUDWindowController {
         window?.isHidden = false
 
         // The show ACK is emitted only after this synchronous main-thread layout.
+        viewController.view.setNeedsLayout()
+        viewController.view.layoutIfNeeded()
+    }
+
+    private func present(_ failure: HUDTestFailure, in scene: UIWindowScene) {
+        let viewController = ensureWindow(in: scene)
+        viewController.showFailure(failure)
+        window?.isHidden = false
+
+        // The failure ACK is emitted only after synchronous main-thread layout.
         viewController.view.setNeedsLayout()
         viewController.view.layoutIfNeeded()
     }
@@ -246,12 +320,18 @@ final class HUDWindowController {
             self.window = window
             viewController.loadViewIfNeeded()
 
-            if let currentText {
+            if let currentFailure {
+                viewController.showFailure(currentFailure)
+            } else if let currentText {
                 viewController.show(currentText)
             }
         }
 
         return rootViewController!
+    }
+
+    private var hasPersistentContent: Bool {
+        currentText != nil || currentFailure != nil
     }
 
     private func foregroundScene() -> UIWindowScene? {
@@ -299,6 +379,7 @@ private final class HUDViewController: UIViewController {
     private lazy var testCaseView = TestCaseCardView(
         configuration: configuration
     )
+    private let failureView = FailureCardView()
     private let highlightView = UIView()
     private lazy var interactionOverlayView = InteractionOverlayView(
         accentColor: configuration.highlightStrokeColor,
@@ -369,11 +450,13 @@ private final class HUDViewController: UIViewController {
         interactionOverlayView.translatesAutoresizingMaskIntoConstraints = false
         interactionOverlayView.isAccessibilityElement = false
         testCaseView.translatesAutoresizingMaskIntoConstraints = false
+        failureView.translatesAutoresizingMaskIntoConstraints = false
 
         rootView.addSubview(interactionOverlayView)
         rootView.addSubview(highlightView)
         rootView.addSubview(cardView)
         rootView.addSubview(testCaseView)
+        rootView.addSubview(failureView)
         cardView.addSubview(cardSurfaceView)
         cardSurfaceView.addSubview(label)
 
@@ -404,6 +487,16 @@ private final class HUDViewController: UIViewController {
                 equalTo: safeArea.centerYAnchor
             ),
             testCaseView.widthAnchor.constraint(
+                equalTo: safeArea.widthAnchor,
+                multiplier: 0.88
+            ),
+            failureView.centerXAnchor.constraint(
+                equalTo: safeArea.centerXAnchor
+            ),
+            failureView.centerYAnchor.constraint(
+                equalTo: safeArea.centerYAnchor
+            ),
+            failureView.widthAnchor.constraint(
                 equalTo: safeArea.widthAnchor,
                 multiplier: 0.88
             ),
@@ -466,6 +559,7 @@ private final class HUDViewController: UIViewController {
     }
 
     func show(_ text: String) {
+        hideFailure()
         label.text = text
         cardView.isHidden = false
         view.setNeedsLayout()
@@ -489,6 +583,7 @@ private final class HUDViewController: UIViewController {
 
     func showTestCase(_ testCase: HUDTestCase) {
         hideStep()
+        hideFailure()
         testCaseView.configure(with: testCase)
         testCaseView.isHidden = false
         view.setNeedsLayout()
@@ -498,6 +593,26 @@ private final class HUDViewController: UIViewController {
     func hideTestCase() {
         testCaseView.isHidden = true
         testCaseView.reset()
+    }
+
+    func showFailure(_ failure: HUDTestFailure) {
+        hideStep()
+        hideTestCase()
+        resetHighlight()
+        interactionOverlayView.reset()
+        failureView.configure(with: failure)
+        failureView.isHidden = false
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        failureView.presentAnimated()
+    }
+
+    func hideFailure() {
+        failureView.layer.removeAllAnimations()
+        failureView.alpha = 1
+        failureView.transform = .identity
+        failureView.isHidden = true
+        failureView.reset()
     }
 
     func showHighlight(_ rect: HUDNormalizedRect) {
@@ -582,6 +697,14 @@ private final class HUDViewController: UIViewController {
             highlightView.alpha = 1
             completion()
         }
+    }
+
+    private func resetHighlight() {
+        normalizedHighlightRect = nil
+        highlightAnimationGeneration += 1
+        highlightView.layer.removeAllAnimations()
+        highlightView.isHidden = true
+        highlightView.alpha = 1
     }
 
     func showInteraction(_ interaction: HUDInteraction) {
@@ -915,6 +1038,16 @@ private final class InteractionOverlayView: UIView {
             alpha = 1
             completion()
         }
+    }
+
+    func reset() {
+        animationGeneration += 1
+        layer.removeAllAnimations()
+        resetLayers()
+        interaction = nil
+        renderedBounds = .null
+        isHidden = true
+        alpha = 1
     }
 
     private func render(animated: Bool) {

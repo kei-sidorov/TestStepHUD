@@ -4,6 +4,7 @@ public enum HUDMessageKind: String, Codable, Sendable {
     case hello
     case show
     case showTestCase
+    case showFailure
     case hide
     case ping
     case highlight
@@ -128,6 +129,22 @@ public struct HUDTestCase: Codable, Equatable, Sendable {
     }
 }
 
+public struct HUDTestFailure: Codable, Equatable, Sendable {
+    public let title: String
+    public let message: String
+    public let location: String?
+
+    public init(
+        title: String,
+        message: String,
+        location: String? = nil
+    ) {
+        self.title = title
+        self.message = message
+        self.location = location
+    }
+}
+
 public struct HUDWireMessage: Codable, Equatable, Sendable {
     public let kind: HUDMessageKind
     public let id: UUID?
@@ -135,6 +152,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
     public let protocolVersion: Int?
     public let text: String?
     public let testCase: HUDTestCase?
+    public let failure: HUDTestFailure?
     public let rect: HUDNormalizedRect?
     public let interaction: HUDInteraction?
     public let success: Bool?
@@ -147,6 +165,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
         protocolVersion: Int? = nil,
         text: String? = nil,
         testCase: HUDTestCase? = nil,
+        failure: HUDTestFailure? = nil,
         rect: HUDNormalizedRect? = nil,
         interaction: HUDInteraction? = nil,
         success: Bool? = nil,
@@ -158,6 +177,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
         self.protocolVersion = protocolVersion
         self.text = text
         self.testCase = testCase
+        self.failure = failure
         self.rect = rect
         self.interaction = interaction
         self.success = success
@@ -182,6 +202,13 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
             id: id,
             testCase: HUDTestCase(title: title, steps: steps)
         )
+    }
+
+    public static func showFailure(
+        id: UUID,
+        failure: HUDTestFailure
+    ) -> Self {
+        Self(kind: .showFailure, id: id, failure: failure)
     }
 
     public static func hide(id: UUID) -> Self {
@@ -244,6 +271,16 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
             throw TestStepHUDProtocolError.missingField("testCase")
         }
         return testCase
+    }
+
+    public func failureValue() throws -> HUDTestFailure {
+        guard kind == .showFailure else {
+            throw TestStepHUDProtocolError.unexpectedMessage(kind.rawValue)
+        }
+        guard let failure else {
+            throw TestStepHUDProtocolError.missingField("failure")
+        }
+        return failure
     }
 
     public func highlightRect() throws -> HUDNormalizedRect {

@@ -102,6 +102,7 @@ final class AppTransport: @unchecked Sendable {
         guard [
             .show,
             .showTestCase,
+            .showFailure,
             .hide,
             .ping,
             .highlight,

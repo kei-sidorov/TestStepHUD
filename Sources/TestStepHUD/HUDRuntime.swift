@@ -62,6 +62,13 @@ final class HUDRuntime {
                     testCase,
                     completion: completion
                 )
+            case .showFailure:
+                _ = try message.commandID()
+                let failure = try message.failureValue()
+                windowController.showFailure(
+                    failure,
+                    completion: completion
+                )
             case .hide:
                 _ = try message.commandID()
                 windowController.hide()

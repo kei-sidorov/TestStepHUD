@@ -20,6 +20,7 @@
 		D0000000000000000000000B /* TestStepHUDTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = J00000000000000000000002 /* TestStepHUDTestSupport */; };
 		D0000000000000000000000C /* TestTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000C /* TestTransportTests.swift */; };
 		D0000000000000000000000D /* TestStepHUDPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000D /* TestStepHUDPresentationTests.swift */; };
+		D0000000000000000000000E /* TestStepHUDFailureObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000000E /* TestStepHUDFailureObserverTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +47,7 @@
 		C0000000000000000000000B /* TestStepHUDProtocolTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TestStepHUDProtocolTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0000000000000000000000C /* TestTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestTransportTests.swift; sourceTree = "<group>"; };
 		C0000000000000000000000D /* TestStepHUDPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestStepHUDPresentationTests.swift; sourceTree = "<group>"; };
+		C0000000000000000000000E /* TestStepHUDFailureObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestStepHUDFailureObserverTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -124,6 +126,7 @@
 				C0000000000000000000000A /* AcknowledgementRouterTests.swift */,
 				C0000000000000000000000C /* TestTransportTests.swift */,
 				C0000000000000000000000D /* TestStepHUDPresentationTests.swift */,
+				C0000000000000000000000E /* TestStepHUDFailureObserverTests.swift */,
 			);
 			name = TestStepHUDProtocolTests;
 			path = ../../Tests/TestStepHUDProtocolTests;
@@ -292,6 +295,7 @@
 				D00000000000000000000009 /* AcknowledgementRouterTests.swift in Sources */,
 				D0000000000000000000000C /* TestTransportTests.swift in Sources */,
 				D0000000000000000000000D /* TestStepHUDPresentationTests.swift in Sources */,
+				D0000000000000000000000E /* TestStepHUDFailureObserverTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

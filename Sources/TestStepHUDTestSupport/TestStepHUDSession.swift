@@ -8,7 +8,9 @@ public final class TestStepHUDSession: @unchecked Sendable {
     private let defaultTimeout: TimeInterval
     private let presentation: TestStepHUDPresentation
     private let cancellationLock = NSLock()
+    private let observationLock = NSLock()
     private var isCancelled = false
+    private var failureObserver: TestStepHUDFailureObserver?
 
     /// The setup error when HUD startup was unavailable. A session with a
     /// startup error safely ignores HUD commands while the UI test continues.
@@ -141,8 +143,46 @@ public final class TestStepHUDSession: @unchecked Sendable {
     public func cancel() {
         guard beginCancellation() else { return }
 
+        deactivateFailureObservation()
         XCUIElementTapInterceptor.deactivate(session: self)
         transport?.cancelAfterHidingHUD(timeout: defaultTimeout)
+    }
+
+    func activateFailureObservation() {
+        observationLock.lock()
+        defer { observationLock.unlock() }
+        guard failureObserver == nil else { return }
+
+        let observer = TestStepHUDFailureObserver(session: self)
+        failureObserver = observer
+        XCTestObservationCenter.shared.addTestObserver(observer)
+    }
+
+    func presentFailure(_ failure: HUDTestFailure) {
+        guard !hasCancelled, let transport else { return }
+
+        do {
+            try transport.send(
+                .showFailure(id: UUID(), failure: failure),
+                timeout: defaultTimeout
+            )
+        } catch {
+            return
+        }
+
+        guard presentation.failureDuration > 0 else { return }
+        Thread.sleep(forTimeInterval: presentation.failureDuration)
+    }
+
+    private func deactivateFailureObservation() {
+        observationLock.lock()
+        let observer = failureObserver
+        failureObserver = nil
+        observationLock.unlock()
+
+        if let observer {
+            XCTestObservationCenter.shared.removeTestObserver(observer)
+        }
     }
 
     private var hasCancelled: Bool {

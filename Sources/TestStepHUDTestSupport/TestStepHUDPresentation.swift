@@ -1,13 +1,16 @@
 import Foundation
 
-/// Deliberate UI-test pauses used only to make visual recordings readable.
+/// UI-test pauses used only to make visual recordings readable.
 public struct TestStepHUDPresentation: Equatable, Sendable {
     public let testCaseDuration: TimeInterval
     public let interactionDelay: TimeInterval
+    /// Minimum time a recorded XCTest failure remains visible.
+    public let failureDuration: TimeInterval
 
     public init(
         testCaseDuration: TimeInterval,
-        interactionDelay: TimeInterval
+        interactionDelay: TimeInterval,
+        failureDuration: TimeInterval = 3
     ) {
         self.testCaseDuration = Self.clamp(
             testCaseDuration,
@@ -17,33 +20,50 @@ public struct TestStepHUDPresentation: Equatable, Sendable {
             interactionDelay,
             to: 0...5
         )
+        self.failureDuration = Self.clamp(
+            failureDuration,
+            to: 0...60
+        )
     }
 
-    /// No test-case card and no deliberate delay before interactions.
+    /// No successful-run pauses. Failures remain readable for three seconds.
     public static let fast = TestStepHUDPresentation(
         testCaseDuration: 0,
-        interactionDelay: 0
+        interactionDelay: 0,
+        failureDuration: 3
     )
 
-    /// Recording-friendly defaults with readable test-case and interaction
-    /// lead-in pauses.
+    /// Recording-friendly defaults with readable test-case, interaction, and
+    /// failure presentation timing.
     public static func visual(
         testCaseDuration: TimeInterval = 4,
-        interactionDelay: TimeInterval = 0.5
+        interactionDelay: TimeInterval = 0.5,
+        failureDuration: TimeInterval = 3
     ) -> Self {
         Self(
             testCaseDuration: testCaseDuration,
-            interactionDelay: interactionDelay
+            interactionDelay: interactionDelay,
+            failureDuration: failureDuration
         )
     }
 
     /// Reads the presentation profile from the UI-test process environment.
-    /// Only `TESTSTEPHUD_MODE=visual` enables deliberate pauses.
+    /// `TESTSTEPHUD_MODE=visual` enables successful-run pauses; failure timing
+    /// is configurable in both modes.
     public static func fromEnvironment(
         _ environment: [String: String] = ProcessInfo.processInfo.environment
     ) -> Self {
+        let failureDuration = environmentValue(
+            "TESTSTEPHUD_FAILURE_DURATION",
+            in: environment,
+            default: 3
+        )
         guard environment["TESTSTEPHUD_MODE"]?.lowercased() == "visual" else {
-            return .fast
+            return Self(
+                testCaseDuration: 0,
+                interactionDelay: 0,
+                failureDuration: failureDuration
+            )
         }
 
         let testCaseDuration = environmentValue(
@@ -58,7 +78,8 @@ public struct TestStepHUDPresentation: Equatable, Sendable {
         )
         return .visual(
             testCaseDuration: testCaseDuration,
-            interactionDelay: interactionDelay
+            interactionDelay: interactionDelay,
+            failureDuration: failureDuration
         )
     }
 
