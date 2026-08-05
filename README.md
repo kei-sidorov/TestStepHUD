@@ -14,12 +14,12 @@
   <img
     src="Docs/Assets/teststephud-demo.webp"
     width="360"
-    alt="TestStepHUD visualizing typing, swipe, long press, drag, coordinate tap, and double tap in an XCUITest recording"
+    alt="TestStepHUD showing a test-case introduction, element-following steps, automatic interactions, and an XCTAssert failure reason"
   >
 </a>
 
 <sub>
-Typing, swipe, long press, drag, coordinate tap, and double tap.
+Test-case intro, element-following steps, automatic interactions, and a visible XCTAssert failure.
 <a href="Docs/Assets/teststephud-demo.mp4">Watch the MP4 demo.</a>
 </sub>
 
@@ -479,7 +479,8 @@ visualized.
 
 The repository includes a UIKit demo application and three UI-test scenarios:
 
-- Readable step annotations and tap highlighting
+- A recorded checkout tour with a test-case intro, element-following steps,
+  and an optional deliberate assertion failure
 - Common automatic interaction visuals
 - Concurrent-session rejection
 
@@ -491,12 +492,15 @@ and run the `TestStepHUDDemo` scheme, or use:
 ./Scripts/test-package.sh
 ./Scripts/test-demo.sh
 ./Scripts/export-ui-test-videos.sh Artifacts/TestStepHUDDemo.xcresult
+./Scripts/record-demo.sh
 ```
 
 `test-package.sh` runs protocol and transport unit tests on an iOS Simulator.
 `test-demo.sh` runs the full unit and UI-test suite and writes an `.xcresult`.
 The export script extracts keep-always screenshots and Xcode screen
-recordings.
+recordings. `record-demo.sh` runs the checkout tour with its deliberate
+`XCTAssertEqual` mismatch, verifies that exact failure in the result bundle,
+and rebuilds the README MP4 and animated WebP.
 
 Use a specific Simulator or result path when needed:
 

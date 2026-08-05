@@ -4,12 +4,16 @@ import TestStepHUDTestSupport
 final class TestStepHUDDemoUITests: XCTestCase {
     @MainActor
     func testRecordedCheckoutFlowShowsReadableSteps() {
-        continueAfterFailure = false
+        continueAfterFailure = demonstratesFailureCard
 
         let app = XCUIApplication()
         let hud = app.launchWithTestStepHUD(
             timeout: 10,
-            presentation: .visual(testCaseDuration: 3)
+            presentation: .visual(
+                testCaseDuration: 3.5,
+                interactionDelay: 0.65,
+                failureDuration: 4
+            )
         )
 
         addTeardownBlock {
@@ -18,40 +22,49 @@ final class TestStepHUDDemoUITests: XCTestCase {
         requireAvailableHUD(hud)
 
         hud.testCase(
-            "Completing checkout shows the order confirmation",
+            "Checkout finishes with the expected status",
             steps: [
-                "Find the Continue button",
-                "Tap Continue",
-                "Verify the order confirmation"
+                "Add a delivery note",
+                "Confirm the order",
+                "Verify the final status"
             ]
         )
 
-        hud.step("1 of 3 · Find the Continue button")
-        XCTAssertTrue(
-            app.buttons["continueButton"].waitForExistence(timeout: 5)
-        )
-        keepStepReadableAndAttachScreenshot(
-            named: "01-find-continue"
-        )
+        let noteField = app.textFields["noteField"]
+        let confirmButton = app.buttons["continueButton"]
+        let checkoutStatus = app.staticTexts["checkoutStatus"]
 
-        hud.step("2 of 3 · Tap Continue")
-        app.buttons["continueButton"].tap()
-        keepStepReadableAndAttachScreenshot(
-            named: "02-tap-continue"
-        )
+        XCTAssertTrue(noteField.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirmButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(checkoutStatus.waitForExistence(timeout: 5))
 
-        hud.step("3 of 3 · Verify order confirmation")
-        XCTAssertTrue(
-            app.staticTexts["Order confirmed"].waitForExistence(timeout: 5)
+        hud.step("1 of 3 · Add a delivery note") {
+            noteField.tap()
+            noteField.typeText("Leave at reception")
+            noteField.typeText(XCUIKeyboardKey.return.rawValue)
+            keepStepReadableAndAttachScreenshot(
+                named: "01-delivery-note"
+            )
+        }
+
+        hud.step("2 of 3 · Confirm the order") {
+            confirmButton.tap()
+            keepStepReadableAndAttachScreenshot(
+                named: "02-confirm-order"
+            )
+        }
+
+        hud.step("3 of 3 · Verify the final status")
+        let expectedStatus = demonstratesFailureCard
+            ? "Payment complete"
+            : "Order confirmed"
+        XCTAssertEqual(
+            checkoutStatus.label,
+            expectedStatus,
+            "Checkout should show the final payment status."
         )
-        waitAndAttachScreenshot(
-            named: "03-follow-position",
-            delay: 0.5
-        )
-        waitAndAttachScreenshot(
-            named: "04-idle-return-home",
-            delay: 3.4
-        )
+        guard !demonstratesFailureCard else { return }
+        keepStepReadableAndAttachScreenshot(named: "03-final-status")
 
         hud.hide()
     }
@@ -161,6 +174,14 @@ final class TestStepHUDDemoUITests: XCTestCase {
             hud.startupError?.localizedDescription ??
                 "The TestStepHUD session is unavailable."
         )
+    }
+
+    private var demonstratesFailureCard: Bool {
+        #if TESTSTEPHUD_DEMO_FAILURE
+        true
+        #else
+        false
+        #endif
     }
 
     @MainActor
