@@ -133,6 +133,13 @@ enum XCUIElementTapInterceptor {
         ),
         MethodExchange(
             targetClass: XCUIElement.self,
+            original: NSSelectorFromString("waitForExistenceWithTimeout:"),
+            intercepted: #selector(
+                XCUIElement.testStepHUD_callOriginalWaitForExistence
+            )
+        ),
+        MethodExchange(
+            targetClass: XCUIElement.self,
             original: NSSelectorFromString("typeText:"),
             intercepted: #selector(
                 XCUIElement.testStepHUD_callOriginalTypeText
@@ -239,6 +246,23 @@ private extension XCUIElement {
 
         session.performInterceptedDoubleTap(on: self) {
             self.testStepHUD_callOriginalDoubleTap()
+        }
+    }
+
+    @MainActor
+    @objc(testStepHUD_callOriginalWaitForExistenceWithTimeout:)
+    dynamic func testStepHUD_callOriginalWaitForExistence(
+        timeout: TimeInterval
+    ) -> Bool {
+        guard let session = XCUIElementTapInterceptor.activeSession() else {
+            return testStepHUD_callOriginalWaitForExistence(timeout: timeout)
+        }
+
+        return session.performInterceptedWaitForExistence(
+            on: self,
+            timeout: timeout
+        ) {
+            self.testStepHUD_callOriginalWaitForExistence(timeout: $0)
         }
     }
 

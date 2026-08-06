@@ -85,7 +85,7 @@ Link the products to different targets:
 dependencies: [
     .package(
         url: "https://github.com/kei-sidorov/TestStepHUD.git",
-        from: "0.1.0"
+        from: "0.4.0"
     )
 ]
 ```
@@ -216,6 +216,7 @@ XCUITest calls:
 
 | XCUITest action | Recording visual |
 | --- | --- |
+| Successful `waitForExistence(timeout:)` | Green filled rounded rectangle with two alpha flashes |
 | `tap()` | Filled rounded rectangle with two alpha flashes |
 | `doubleTap()` | Two quick pulses around the element or coordinate |
 | `swipeUp/Down/Left/Right()` | Directional arrow |
@@ -224,9 +225,11 @@ XCUITest calls:
 | `press(forDuration:thenDragTo:)` | Arrow from source to destination |
 | Coordinate tap, double tap, press, and drag | Ripple, pulse, hold indicator, or path |
 
-The visual appears before the original XCTest implementation runs and fades
-quickly afterward. If visualization fails, TestStepHUD still performs the
-original action without recording an XCTest failure.
+Interaction visuals appear before the original XCTest implementation runs and
+fade quickly afterward. A `waitForExistence(timeout:)` visual appears only
+after the original call returns `true`, preserving its timeout and return
+value. If visualization fails, TestStepHUD still performs the original action
+without recording an XCTest failure.
 
 Typed content is never transmitted to the application. A typing visual
 contains only the interaction kind and normalized target frame.
@@ -258,7 +261,7 @@ issue. Issues suppressed by `XCTExpectFailure` are not presented as failures.
 process environment. The default is **fast**:
 
 - `testCase(_:steps:)` is skipped.
-- Automatic interaction visuals add no artificial delay.
+- Automatic interaction and existence visuals add no artificial delay.
 - Successful tests receive no presentation pauses; a failure card remains
   visible for three seconds because the test may end immediately afterward.
 - Regular `show`, `step`, and interaction commands remain synchronized with
@@ -275,7 +278,7 @@ TESTSTEPHUD_MODE=visual xcodebuild test ...
 | --- | --- | --- | --- |
 | `TESTSTEPHUD_MODE` | unset or `fast` | `visual` | Only `visual` enables successful-run pauses. |
 | `TESTSTEPHUD_CASE_DURATION` | `0` | `4` seconds | Time the centered test-case card remains visible; clamped to `0...60`. |
-| `TESTSTEPHUD_INTERACTION_DELAY` | `0` | `0.5` seconds | Lead-in before the original intercepted interaction; clamped to `0...5`. |
+| `TESTSTEPHUD_INTERACTION_DELAY` | `0` | `0.5` seconds | Presentation pause before an intercepted interaction or after a successful existence wait; clamped to `0...5`. |
 | `TESTSTEPHUD_FAILURE_DURATION` | `3` seconds | `3` seconds | Minimum time a failure card remains readable; clamped to `0...60` in both modes. |
 
 Profiles can also be selected explicitly in code:
@@ -466,10 +469,10 @@ validated.
 Only one HUD session may be active in a UI-test process. A second launch fails
 before starting another application.
 
-Element `tap()` is the required baseline interception selector. Additional
-gesture selectors are installed only when the XCTest runtime exposes the
-expected Objective-C ABI, so an unavailable optional gesture does not disable
-the HUD or tap highlighting.
+Element `tap()` is the required baseline interception selector. The
+`waitForExistence(timeout:)` and additional gesture selectors are installed
+only when the XCTest runtime exposes the expected Objective-C ABI, so an
+unavailable optional selector does not disable the HUD or tap highlighting.
 
 Velocity-specific swipes, pinch, rotation, picker-wheel adjustment, slider
 adjustment, hardware keyboard keys, and device-level actions are not currently

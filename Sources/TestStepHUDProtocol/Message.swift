@@ -54,6 +54,11 @@ public struct HUDNormalizedPoint: Codable, Equatable, Sendable {
     }
 }
 
+public enum HUDHighlightStyle: String, Codable, Sendable {
+    case interaction
+    case existence
+}
+
 public enum HUDSwipeDirection: String, Codable, Sendable {
     case up
     case down
@@ -154,6 +159,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
     public let testCase: HUDTestCase?
     public let failure: HUDTestFailure?
     public let rect: HUDNormalizedRect?
+    public let highlightStyle: HUDHighlightStyle?
     public let interaction: HUDInteraction?
     public let success: Bool?
     public let error: String?
@@ -167,6 +173,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
         testCase: HUDTestCase? = nil,
         failure: HUDTestFailure? = nil,
         rect: HUDNormalizedRect? = nil,
+        highlightStyle: HUDHighlightStyle? = nil,
         interaction: HUDInteraction? = nil,
         success: Bool? = nil,
         error: String? = nil
@@ -179,6 +186,7 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
         self.testCase = testCase
         self.failure = failure
         self.rect = rect
+        self.highlightStyle = highlightStyle
         self.interaction = interaction
         self.success = success
         self.error = error
@@ -219,8 +227,17 @@ public struct HUDWireMessage: Codable, Equatable, Sendable {
         Self(kind: .ping, id: id)
     }
 
-    public static func highlight(id: UUID, rect: HUDNormalizedRect) -> Self {
-        Self(kind: .highlight, id: id, rect: rect)
+    public static func highlight(
+        id: UUID,
+        rect: HUDNormalizedRect,
+        style: HUDHighlightStyle = .interaction
+    ) -> Self {
+        Self(
+            kind: .highlight,
+            id: id,
+            rect: rect,
+            highlightStyle: style
+        )
     }
 
     public static func clearHighlight(id: UUID) -> Self {

@@ -133,4 +133,12 @@ extension TestStepHUD.Configuration {
     var highlightFillColor: UIColor {
         highlightColor.uiColor.withAlphaComponent(highlightOpacity)
     }
+
+    var existenceHighlightStrokeColor: UIColor {
+        UIColor(red: 52 / 255, green: 199 / 255, blue: 89 / 255, alpha: 1)
+    }
+
+    var existenceHighlightFillColor: UIColor {
+        existenceHighlightStrokeColor.withAlphaComponent(highlightOpacity)
+    }
 }

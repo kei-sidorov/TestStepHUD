@@ -41,6 +41,26 @@ final class FrameCodecTests: XCTestCase {
         XCTAssertEqual(try decoded.highlightRect(), message.rect)
     }
 
+    func testRoundTripExistenceHighlightMessage() throws {
+        let message = HUDWireMessage.highlight(
+            id: UUID(),
+            rect: HUDNormalizedRect(
+                x: 0.1,
+                y: 0.2,
+                width: 0.3,
+                height: 0.4
+            ),
+            style: .existence
+        )
+
+        let decoded = try HUDMessageCoding.decode(
+            HUDMessageCoding.encode(message)
+        )
+
+        XCTAssertEqual(decoded, message)
+        XCTAssertEqual(decoded.highlightStyle, .existence)
+    }
+
     func testRoundTripTestCaseMessage() throws {
         let message = HUDWireMessage.showTestCase(
             id: UUID(),

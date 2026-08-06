@@ -19,6 +19,7 @@ final class HUDWindowController {
     )?
     private var pendingHighlight: (
         rect: HUDNormalizedRect,
+        style: HUDHighlightStyle,
         completion: ShowCompletion
     )?
     private var pendingInteraction: (
@@ -158,17 +159,18 @@ final class HUDWindowController {
 
     func highlight(
         _ rect: HUDNormalizedRect,
+        style: HUDHighlightStyle,
         completion: @escaping ShowCompletion
     ) {
         guard let scene = foregroundScene() else {
             pendingHighlight?.completion(
                 .failure(HUDPresentationError.supersededBeforePresentation)
             )
-            pendingHighlight = (rect, completion)
+            pendingHighlight = (rect, style, completion)
             return
         }
 
-        presentHighlight(rect, in: scene)
+        presentHighlight(rect, style: style, in: scene)
         completion(.success(()))
     }
 
@@ -243,7 +245,11 @@ final class HUDWindowController {
 
         if let pendingHighlight {
             self.pendingHighlight = nil
-            presentHighlight(pendingHighlight.rect, in: scene)
+            presentHighlight(
+                pendingHighlight.rect,
+                style: pendingHighlight.style,
+                in: scene
+            )
             pendingHighlight.completion(.success(()))
         }
 
@@ -286,10 +292,13 @@ final class HUDWindowController {
 
     private func presentHighlight(
         _ rect: HUDNormalizedRect,
+        style: HUDHighlightStyle,
         in scene: UIWindowScene
     ) {
         let viewController = ensureWindow(in: scene)
-        viewController.showHighlight(rect)
+        viewController.showHighlight(rect, style: style) { [weak self] in
+            self?.clearHighlight()
+        }
         window?.isHidden = false
         viewController.view.setNeedsLayout()
         viewController.view.layoutIfNeeded()
@@ -615,12 +624,18 @@ private final class HUDViewController: UIViewController {
         failureView.reset()
     }
 
-    func showHighlight(_ rect: HUDNormalizedRect) {
+    func showHighlight(
+        _ rect: HUDNormalizedRect,
+        style: HUDHighlightStyle,
+        completion: @escaping () -> Void
+    ) {
         view.layoutIfNeeded()
         normalizedHighlightRect = rect
         layoutHighlight()
 
         highlightAnimationGeneration += 1
+        let generation = highlightAnimationGeneration
+        applyHighlightStyle(style)
         highlightView.layer.removeAllAnimations()
         highlightView.isHidden = false
         highlightView.alpha = 1
@@ -658,10 +673,33 @@ private final class HUDViewController: UIViewController {
             ) {
                 self.highlightView.alpha = 1
             }
+        } completion: { [weak self] _ in
+            guard
+                let self,
+                style == .existence,
+                highlightAnimationGeneration == generation
+            else {
+                return
+            }
+            completion()
         }
 
         guard configuration.movesHUDToHighlightedElement else { return }
         follow(rect)
+    }
+
+    private func applyHighlightStyle(_ style: HUDHighlightStyle) {
+        switch style {
+        case .interaction:
+            highlightView.backgroundColor = configuration.highlightFillColor
+            highlightView.layer.shadowColor =
+                configuration.highlightStrokeColor.cgColor
+        case .existence:
+            highlightView.backgroundColor =
+                configuration.existenceHighlightFillColor
+            highlightView.layer.shadowColor =
+                configuration.existenceHighlightStrokeColor.cgColor
+        }
     }
 
     func clearHighlight(completion: @escaping () -> Void) {

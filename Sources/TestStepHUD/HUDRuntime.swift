@@ -79,7 +79,11 @@ final class HUDRuntime {
             case .highlight:
                 _ = try message.commandID()
                 let rect = try message.highlightRect()
-                windowController.highlight(rect, completion: completion)
+                windowController.highlight(
+                    rect,
+                    style: message.highlightStyle ?? .interaction,
+                    completion: completion
+                )
             case .clearHighlight:
                 _ = try message.commandID()
                 windowController.clearHighlight()

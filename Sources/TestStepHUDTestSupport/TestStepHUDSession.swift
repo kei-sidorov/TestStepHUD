@@ -215,7 +215,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
                     timeout: defaultTimeout
                 )
                 didPresentHighlight = true
-                pauseBeforeInteractionIfNeeded()
+                pauseForAutomaticVisualIfNeeded()
             } catch {}
         }
 
@@ -243,6 +243,32 @@ public final class TestStepHUDSession: @unchecked Sendable {
             name: "double tap",
             originalAction: originalAction
         )
+    }
+
+    @MainActor
+    func performInterceptedWaitForExistence(
+        on element: XCUIElement,
+        timeout: TimeInterval,
+        originalWait: (TimeInterval) -> Bool
+    ) -> Bool {
+        let didExist = originalWait(timeout)
+        guard
+            didExist,
+            let transport,
+            let rect = normalizedRect(for: element, requireHittable: false)
+        else {
+            return didExist
+        }
+
+        do {
+            try transport.send(
+                .highlight(id: UUID(), rect: rect, style: .existence),
+                timeout: defaultTimeout
+            )
+            pauseForAutomaticVisualIfNeeded()
+        } catch {}
+
+        return didExist
     }
 
     @MainActor
@@ -414,7 +440,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
                     timeout: defaultTimeout
                 )
                 didPresent = true
-                pauseBeforeInteractionIfNeeded()
+                pauseForAutomaticVisualIfNeeded()
             } catch {}
         }
 
@@ -428,7 +454,7 @@ public final class TestStepHUDSession: @unchecked Sendable {
         }
     }
 
-    private func pauseBeforeInteractionIfNeeded() {
+    private func pauseForAutomaticVisualIfNeeded() {
         guard presentation.interactionDelay > 0 else { return }
         Thread.sleep(forTimeInterval: presentation.interactionDelay)
     }

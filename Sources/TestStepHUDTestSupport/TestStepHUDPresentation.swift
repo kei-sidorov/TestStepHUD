@@ -3,6 +3,7 @@ import Foundation
 /// UI-test pauses used only to make visual recordings readable.
 public struct TestStepHUDPresentation: Equatable, Sendable {
     public let testCaseDuration: TimeInterval
+    /// Pause used to keep automatic interaction and existence visuals readable.
     public let interactionDelay: TimeInterval
     /// Minimum time a recorded XCTest failure remains visible.
     public let failureDuration: TimeInterval
